@@ -26,12 +26,6 @@ def verify_angles(SZA, VZA, RAZ, VAA, SAA, location=""):
     Args:
         location (str): Description of where verification is being done for better debugging
     """
-    # Check for basic NaN values first
-    for name, angle in [("SZA", SZA), ("VZA", VZA), ("RAZ", RAZ), 
-                       ("VAA", VAA) if VAA is not None else (None, None), 
-                       ("SAA", SAA) if SAA is not None else (None, None)]:
-        if angle is not None and np.any(np.isnan(angle)):
-            print(f"Warning: {location} - NaN values found in {name}")
     
     # Check ranges based on metadata
     if np.any((SZA < 0) | (SZA > 180)):
