@@ -1,4 +1,4 @@
-# HARP2 Quality Flag Generator (generate_glint.py)
+# HARP2 Quality Flag Generator (HARP2_glint_diagnostics.py)
 
 A Python script that processes HARP2 L1C measurement files to identify “glinted” angles for each pixel and produce a single numeric indicator called a *quality flag*. Specifically:
 
@@ -87,7 +87,7 @@ File paths to set (also in `main()` or a config file):
    - Place them in the input folder
 3. **Run the script**:
    ```bash
-   python generate_glint.py
+   python HARP2_glint_diagnostics.py
    ```
 
 ---
