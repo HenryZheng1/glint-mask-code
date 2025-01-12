@@ -1,110 +1,138 @@
 # HARP2 Quality Flag Generator (generate_glint.py)
 
-A Python script that processes HARP2 L1C measurement files to identify glinted angles and generate corresponding quality flags.
+A Python script that processes HARP2 L1C measurement files to identify “glinted” angles for each pixel and produce a single numeric indicator called a *quality flag*. Specifically:
 
-This tool processes HARP2 measurement files to generate quality flags (glinted angles) and creates NetCDF output files containing various atmospheric and geometric parameters.
+- **At 670 nm**, HARP2 collects **60 angles**.
+- **At 867 nm**, HARP2 collects **10 angles**.
+
+For each pixel in the image, the *quality flag* is the **count of how many** of those angles meet the “glint” criteria (e.g., 0 = no glint, 1 = one angle glinted, etc.).
+
+This tool also creates NetCDF output files containing various atmospheric and geometric parameters (e.g., latitude, longitude, masks).
+
+---
 
 ## Overview
 
-The quality flag generator analyzes HARP2 measurement data to identify glinted angles using both 670nm and 867nm wavelengths. It implements a smart algorithm that combines Cox-Munk model predictions with actual measurements to determine glint regions, while also accounting for cloud and land masking.
+This script uses a combination of the Cox–Munk model (a classical model for specular reflection off water surfaces) and the HARP2 measurements to detect glint. It also accounts for cloud and land masking, so those pixels are excluded from glint detection. The main steps include:
+
+1. Reading each HARP2 L1C file  
+2. Determining geometric parameters (viewing angles, sun–earth distance, etc.)  
+3. Predicting specular reflection via Cox–Munk  
+4. Applying cloud‐and‐land masks  
+5. Checking each of the 60 angles at 670 nm and each of the 10 angles at 867 nm for glint  
+6. Generating one “quality flag” value per pixel (the number of glinted angles)  
+7. Saving results to a NetCDF file  
+
+---
 
 ## Prerequisites
 
 Required Python packages:
-- h5py
-- numpy
-- matplotlib
-- pandas
-- xarray
-- pvlib
-- global_land_mask
+
+- `h5py`  
+- `numpy`  
+- `matplotlib`  
+- `pandas`  
+- `xarray`  
+- `pvlib`  
+- `global_land_mask`
 
 Additional requirements:
-- Water refractive index data file (path must be specified in configuration)
-- HARP2 L1C measurement files (.nc format)
+
+- **Water refractive index data file** (path must be specified in configuration)  
+- **HARP2 L1C measurement files** in `.nc` format  
+
+---
 
 ## Installation
 
-1. Clone this repository
-2. Install required packages:
-```bash
-pip install h5py numpy matplotlib pandas xarray pvlib global_land_mask
-```
+1. **Clone this repository**:
+   ```bash
+   git clone https://github.com/yourusername/harp2-glint-flags.git
+   ```
+2. **Install required packages**:
+   ```bash
+   pip install h5py numpy matplotlib pandas xarray pvlib global_land_mask
+   ```
+
+---
 
 ## Configuration
 
-Key parameters that can be adjusted in the `main()` function:
-- `angle_threshold` (default: 30.0): Maximum angle from specular reflection
-- `DoLP_threshold` (default: 0.05): Maximum DoLP difference threshold
-- `RI_threshold` (default: 0.3): Reflectance index threshold for cloud masking
-- `WS` (default: 5.0): Wind speed for Cox-Munk model
+In the `main()` function, you can configure:
 
-File paths to configure:
-- Input folder path for L1C files
-- Output folder path for quality flag files
-- Water refractive index data path (in configuration file)
+- `angle_threshold` (default: 30.0) – Maximum angle from specular reflection  
+- `DoLP_threshold` (default: 0.05) – Threshold for degree of linear polarization  
+- `RI_threshold` (default: 0.3) – Reflectance index threshold for cloud masking  
+- `WS` (default: 5.0) – Wind speed used in the Cox–Munk model  
+
+File paths to set (also in `main()` or a config file):
+
+- **Input folder** for L1C files  
+- **Output folder** for NetCDF results  
+- **Water refractive index data** file path  
+
+---
 
 ## Usage
 
-1. Update the folder paths in `main()`:
-```python
-folder_path = '/path/to/your/l1c/files/'
-output_path = '/path/to/your/output/directory/'
-```
+1. **Edit the folder paths** in `main()` (or your config file):
+   ```python
+   folder_path = '/path/to/your/l1c/files/'
+   output_path = '/path/to/your/output/directory/'
+   ```
+2. **Download HARP2 L1C files**  
+   - Visit the [HARP Data Portal](https://asdc.larc.nasa.gov/data/HARP2/)  
+   - Download `.nc` L1C measurement files  
+   - Place them in the input folder
+3. **Run the script**:
+   ```bash
+   python generate_glint.py
+   ```
 
-2. Download HARP L1C files:
-   - Go to the [HARP Data Portal](https://asdc.larc.nasa.gov/data/HARP2/)
-   - Download L1C measurement files (.nc format)
-   - Place the downloaded files in your input folder
-
-3. Run the script:
-```bash
-python generate_glint.py
-```
+---
 
 ## Output
 
-The script generates NetCDF (.nc) files containing:
+Running the script produces NetCDF (`.nc`) files with:
 
-### Quality Flag Data
-- `qfs_670`: Quality flags/glinted angles for 670nm
-- `qfs_867`: Quality flags/glinted angles for 867nm
+- **`qfs_670`** – Number of “glinted” angles at 670 nm (out of 60 possible angles)  
+- **`qfs_867`** – Number of “glinted” angles at 867 nm (out of 10 possible angles)  
 
-### Geometric Parameters
-- `latitude`, `longitude`: Geographic coordinates
-- `VZA_670`, `VZA_867`: Viewing zenith angles
-- `SZA`: Solar zenith angle
-- `RAZ`: Relative azimuth angle
+In addition, each file contains:
 
-### Additional Fields
-- `dolp_670`, `dolp_867`: Degree of Linear Polarization
-- `cloud_land_mask`: Mask identifying cloud (2), land (1), and water (0) pixels
+- **Geometric parameters**:  
+  - `latitude`, `longitude`, `VZA_670`, `VZA_867`, `SZA`, `RAZ`  
+- **Additional fields**:  
+  - `dolp_670`, `dolp_867`: Degree of linear polarization  
+  - `cloud_land_mask`: Cloud (2), land (1), water (0)  
+- **Metadata**: file paths, processing parameters, timestamps  
 
-### Metadata
-- File paths
-- Processing parameters
-- Creation timestamp
+---
 
 ## Processing Steps
 
-1. Reads HARP2 measurement file
-2. Calculates sun-earth distance from filename
-3. Retrieves and verifies viewing geometry
-4. Applies Cox-Munk model for glint prediction
-5. Generates cloud/land mask
-6. Identifies glint regions using smart algorithm
-7. Creates quality flags based on glinted angles
-8. Saves results to NetCDF file
+1. **Read** each HARP2 measurement file  
+2. **Compute** sun–earth distance from filename/time metadata  
+3. **Extract & verify** viewing geometry (zenith/azimuth angles)  
+4. **Apply** Cox–Munk model to estimate expected glint conditions  
+5. **Build** a cloud & land mask (using reflectance and land boundary data)  
+6. **Identify** glint in each of the 60 angles at 670 nm and 10 angles at 867 nm  
+7. **Form** the *quality flag* per pixel as the count of glinted angles  
+8. **Write** the output to a NetCDF file  
+
+---
 
 ## Error Handling
 
-The script includes comprehensive error handling:
-- Angle verification at multiple stages
-- Pixel-level error catching
-- File processing error management
+- Checks that angles, geometry, and file inputs are valid  
+- Catches pixel‐level anomalies (e.g., missing data)  
+- Logs file I/O issues and continues with remaining files  
+
+---
 
 ## Notes
 
-- The quality flags (qfs) represent the number of glinted angles for each pixel
-- Cloud and land pixels are automatically masked and skipped during processing
-- All angles should be verified to be within expected ranges before processing
+- Cloud or land pixels automatically skip glint detection  
+- All viewing angles and sensor geometry should be validated before processing  
+- The “quality flag” simply indicates how many of the measured angles at a given wavelength are glinted
